@@ -1,0 +1,7 @@
+# Dateien fuer Windows behalten ihre Zeilenenden, egal wo ausgecheckt wird
+*.cmd                        text eol=crlf
+plugin/README.txt            text eol=crlf
+plugin/VatTrackrNotify.ini   text eol=crlf
+*.dll    binary
+*.zip    binary
+*.woff2  binary

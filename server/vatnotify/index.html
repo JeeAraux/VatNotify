@@ -1,0 +1,1145 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VatTrackr Notify – Einrichtung</title>
+<meta name="description" content="VatTrackr Notify schickt dir eine Telegram-Nachricht aufs Handy, sobald dich auf VATSIM ein Lotse in vPilot anschreibt. Kostenlos, in drei Minuten eingerichtet.">
+<meta name="theme-color" content="#0F3D2B">
+<style>
+/* Schriften liegen im Ordner fonts/ (selbst gehostet, keine Abrufe bei Dritten) */
+@font-face{font-family:"Chakra Petch";src:url(fonts/chakra-petch-latin-600-normal.woff2) format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"Chakra Petch";src:url(fonts/chakra-petch-latin-700-normal.woff2) format("woff2");font-weight:700;font-display:swap}
+@font-face{font-family:"IBM Plex Sans";src:url(fonts/ibm-plex-sans-latin-400-normal.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"IBM Plex Sans";src:url(fonts/ibm-plex-sans-latin-600-normal.woff2) format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"IBM Plex Mono";src:url(fonts/ibm-plex-mono-latin-500-normal.woff2) format("woff2");font-weight:500;font-display:swap}
+
+:root{
+  /* Die Farben einer Platine: Loetstopplack, Leiterbahn, Bestueckungsdruck, vergoldete Pads, LEDs */
+  --mask:#0F3D2B;
+  --mask-deep:#0A2D20;
+  --trace:#1F6346;
+  --trace-live:#3FA96F;
+  --silk:#F2F5EE;
+  --silk-dim:#A9C0B2;
+  --pad:#D8B25A;
+  --pad-hi:#E7C778;
+  --led-on:#66E993;
+  --led-wait:#FFA53D;
+  --led-err:#FF6A5E;
+  --display:"Chakra Petch","Arial Narrow",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--mask);color:var(--silk);font:400 1.0625rem/1.55 var(--body)}
+[hidden]{display:none !important}
+.wrap{max-width:64rem;margin:0 auto;padding:0 1.25rem}
+.top,.intro,.alert,.chain,.done,footer{max-width:43.5rem;margin-left:auto;margin-right:auto}
+a{color:var(--silk);text-underline-offset:.2em}
+:focus-visible{outline:2px solid var(--pad);outline-offset:3px;border-radius:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* Kopf */
+.top{display:flex;justify-content:space-between;align-items:center;padding:1.25rem 0}
+.mark{font:700 1.25rem/1 var(--display);color:var(--silk);text-decoration:none}
+.mark span{font-weight:600;color:var(--silk-dim)}
+.lang{display:flex}
+.lang button{font:600 .8125rem/1 var(--body);background:none;color:var(--silk-dim);border:1px solid var(--trace-live);padding:.45rem .65rem;cursor:pointer}
+.lang button:first-child{border-radius:3px 0 0 3px;border-right:0}
+.lang button:last-child{border-radius:0 3px 3px 0}
+.lang button[aria-pressed="true"]{background:var(--silk);border-color:var(--silk);color:var(--mask-deep)}
+
+/* Einstieg */
+.intro{padding:3.25rem 0 3.25rem}
+h1{font:700 clamp(2.25rem,6.4vw,3.75rem)/1.04 var(--display);letter-spacing:-.01em;margin:0 0 1.25rem;max-width:17ch;text-wrap:balance}
+.lede{font-size:1.25rem;line-height:1.5;max-width:36rem;margin:0 0 .75rem}
+.needs{color:var(--silk-dim);margin:0;max-width:36rem}
+
+/* Beispiel-Meldungen: ein Stapel Mitteilungen, wie er auf dem Sperrbildschirm liegt.
+   Bewusst in der Systemschrift des Geraets, nicht in der Hausschrift der Seite. */
+.pile{margin:2.75rem 0 0;padding:0 .75rem;max-width:23.5rem}
+.pile ol{list-style:none;margin:0;padding:0}
+.ping{position:relative;display:grid;grid-template-columns:2.375rem minmax(0,1fr);column-gap:.625rem;align-items:start;
+  background:rgba(246,247,243,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:var(--mask-deep);
+  border-radius:1.375rem;padding:.75rem .9rem 1.5rem .75rem;margin-top:-1rem;
+  box-shadow:0 14px 28px -10px rgba(3,20,13,.6),0 2px 6px rgba(3,20,13,.25);
+  font:400 .9375rem/1.32 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  transform:rotate(var(--r)) translateX(var(--x));
+  animation:drop .6s cubic-bezier(.2,.9,.25,1) both;animation-delay:calc(var(--i)*130ms + 250ms)}
+.ping:first-child{margin-top:0}
+.ping:last-child{padding-bottom:.85rem}
+.ping:nth-child(1){--i:0;--r:-1.5deg;--x:-.5rem}
+.ping:nth-child(2){--i:1;--r:1.1deg;--x:.55rem}
+.ping:nth-child(3){--i:2;--r:-.7deg;--x:-.15rem}
+.ping:nth-child(4){--i:3;--r:1.5deg;--x:.5rem}
+.ping:nth-child(5){--i:4;--r:-1deg;--x:-.55rem}
+@keyframes drop{from{opacity:0;translate:0 -1.25rem;scale:.96}}
+.ping-icon{width:2.375rem;height:2.375rem;border-radius:.56rem;background:var(--mask);display:grid;place-items:center;position:relative}
+.ping-icon::before{content:"";position:absolute;left:.95rem;top:.3rem;width:.5rem;height:.2rem;background:var(--pad);box-shadow:0 1.6rem 0 var(--pad)}
+.ping-icon::after{content:"";width:.8rem;height:.8rem;border-radius:50%;background:var(--led-on);box-shadow:0 0 0 .2rem rgba(102,233,147,.22),0 0 .6rem .15rem rgba(102,233,147,.6)}
+.ping-head{display:flex;justify-content:space-between;align-items:baseline;gap:.75rem}
+.ping-app{font-weight:600}
+.ping-time{font-size:.8125rem;color:#5B7366;white-space:nowrap}
+.ping-text{margin:0;white-space:pre-line;overflow-wrap:anywhere}
+.pile figcaption{margin:1.1rem 0 0;color:var(--silk-dim);font-size:.9375rem}
+
+.alert{border-left:3px solid var(--led-err);background:var(--mask-deep);padding:1rem 1.25rem;margin-bottom:2.5rem;border-radius:0 4px 4px 0}
+
+/* Die Schritte: vier LEDs an einer Leiterbahn, wie die LED-Kette auf dem Board */
+.chain{list-style:none;margin-top:0;margin-bottom:0;padding:0}
+.step{display:grid;grid-template-columns:2.75rem minmax(0,1fr);position:relative;padding-bottom:2.5rem}
+.step::before{content:"";position:absolute;left:8px;top:1.9rem;bottom:-.2rem;width:2px;background:var(--trace);transition:background .6s}
+.step:last-child::before{display:none}
+.step[data-state="done"]::before{background:var(--trace-live)}
+.led{position:absolute;left:0;top:.35rem;width:18px;height:18px;border-radius:3px;background:#E6E2D3;box-shadow:inset 0 0 0 1px rgba(0,0,0,.28);display:grid;place-items:center}
+.led::before{content:"";position:absolute;left:5px;top:-4px;width:8px;height:3px;background:var(--pad);box-shadow:0 23px 0 var(--pad)}
+.led::after{content:"";width:10px;height:10px;border-radius:50%;background:#7E8E84;transition:background .35s,box-shadow .35s}
+.step[data-state="active"] .led::after{background:var(--led-wait);box-shadow:0 0 10px 3px rgba(255,165,61,.5);animation:wait 1.8s ease-in-out infinite}
+.step[data-state="done"] .led::after{background:var(--led-on);box-shadow:0 0 0 2px rgba(102,233,147,.25),0 0 14px 5px rgba(102,233,147,.55)}
+@keyframes wait{50%{opacity:.45;box-shadow:0 0 4px 1px rgba(255,165,61,.3)}}
+
+.head{display:flex;flex-wrap:wrap;align-items:baseline;gap:.25rem 1rem}
+h2{font:600 1.5rem/1.25 var(--display);margin:0;scroll-margin-top:1.5rem}
+h2:focus{outline:none}
+.num{color:var(--silk-dim);margin-right:.6rem;font-variant-numeric:tabular-nums}
+.step[data-state="todo"] h2{color:var(--silk-dim);opacity:.7}
+.sum{color:var(--silk-dim);margin:.25rem 0 0}
+.work{margin-top:1rem;max-width:38rem}
+.work>p{margin:0 0 1rem}
+.work>:last-child{margin-bottom:0}
+
+/* Bedienelemente: Pads sind golden, alles andere ist Bestueckungsdruck */
+.btn{font:600 1rem/1.2 var(--body);border-radius:3px;padding:.75rem 1.15rem;cursor:pointer;border:1px solid transparent;text-decoration:none;display:inline-block}
+.btn-pad{background:var(--pad);border-color:var(--pad);color:#18240F}
+.btn-pad:hover{background:var(--pad-hi);border-color:var(--pad-hi)}
+.btn-silk{background:transparent;color:var(--silk);border-color:var(--silk-dim)}
+.btn-silk:hover{border-color:var(--silk)}
+.btn[disabled]{opacity:.55;cursor:default}
+.link{background:none;border:0;padding:0;font:inherit;color:var(--silk);text-decoration:underline;text-underline-offset:.2em;cursor:pointer}
+.link-dim{color:var(--silk-dim)}
+.row{display:flex;flex-wrap:wrap;gap:.75rem 1.25rem;align-items:center}
+
+.status{display:flex;gap:.65rem;align-items:flex-start;color:var(--silk-dim);margin:1.25rem 0 0}
+.dot{flex:none;width:10px;height:10px;border-radius:50%;margin-top:.5em;background:var(--led-wait);animation:wait 1.8s ease-in-out infinite}
+.status[data-kind="ok"]{color:var(--silk)}
+.status[data-kind="ok"] .dot{background:var(--led-on);animation:none;box-shadow:0 0 10px 3px rgba(102,233,147,.5)}
+.status[data-kind="err"]{color:var(--silk)}
+.status[data-kind="err"] .dot{background:var(--led-err);animation:none}
+
+.well{background:var(--mask-deep);border-radius:4px;padding:1.25rem}
+.pair{display:grid;grid-template-columns:auto minmax(0,1fr);gap:1.5rem;align-items:start}
+.qr{background:var(--silk);border-radius:4px;padding:12px;width:12.5rem;height:12.5rem}
+.qr svg{display:block;width:100%;height:100%}
+.pair p{margin:0 0 1rem}
+
+label{display:block;margin:0 0 .5rem}
+input{font:500 1.0625rem/1.2 var(--mono);background:var(--mask-deep);color:var(--silk);border:1px solid var(--silk-dim);border-radius:3px;padding:.7rem .8rem}
+input::placeholder{color:#6F8C7C}
+#code{font-size:2rem;letter-spacing:.35em;width:10rem;text-align:center;padding:.35rem .2rem .35rem .65rem}
+#key{width:min(100%,19rem);text-transform:uppercase}
+.note{color:var(--silk-dim);margin:.75rem 0 0}
+.warn{color:var(--silk);border-left:3px solid var(--led-err);padding-left:.75rem;margin:.75rem 0 0}
+
+.sub{margin:0 0 1.25rem;padding-left:1.35rem}
+.sub li{margin:.6rem 0;padding-left:.25rem}
+.sub li::marker{color:var(--silk-dim);font-weight:600}
+code{font:500 .95rem/1.4 var(--mono);background:var(--mask-deep);padding:.15rem .4rem;border-radius:3px;overflow-wrap:anywhere}
+.copy{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.5rem 0 0}
+.copy code{padding:.6rem .75rem}
+.copy .btn{padding:.55rem .85rem;font-size:.9375rem}
+kbd{font:600 .875rem/1 var(--body);border:1px solid var(--silk-dim);border-radius:3px;padding:.15rem .4rem;white-space:nowrap}
+
+details{margin:1.25rem 0 0}
+summary{cursor:pointer;text-decoration:underline;text-underline-offset:.2em;width:fit-content}
+details ul{margin:.75rem 0 0;padding-left:1.25rem;color:var(--silk-dim)}
+details li{margin:.5rem 0}
+details li strong{color:var(--silk);font-weight:600}
+
+/* Abschluss */
+.done{padding:.5rem 0 0 2.75rem}
+.done h2{font:700 2.25rem/1.1 var(--display);margin:0 0 1rem}
+.done ul{list-style:none;margin:0 0 1.5rem;padding:0}
+.done li{position:relative;padding-left:1.4rem;margin:.4rem 0}
+.done li::before{content:"";position:absolute;left:0;top:.6em;width:8px;height:8px;border-radius:50%;background:var(--led-on)}
+.done h3{font:600 1.125rem/1.3 var(--display);margin:2rem 0 .5rem}
+.done p{margin:0 0 1rem;max-width:38rem}
+.rule{border-left:3px solid var(--pad);padding-left:1rem}
+
+footer{margin-top:4.5rem;border-top:1px solid var(--trace);padding:1.5rem 0 3rem;color:var(--silk-dim);font-size:.9375rem}
+footer p{margin:0 0 .75rem;max-width:40rem}
+footer a{color:var(--silk-dim)}
+.foot-links{display:flex;flex-wrap:wrap;gap:.25rem 1.5rem}
+
+@media (min-width:62rem){
+  .top,.intro{max-width:none}
+  .intro{display:grid;grid-template-columns:minmax(0,1fr) 23.5rem;column-gap:3.5rem;align-items:center;padding:2.75rem 0 4rem}
+  .pile{margin:0;max-width:none}
+}
+@media (max-width:35rem){
+  .intro{padding:2rem 0 2.5rem}
+  .lede{font-size:1.125rem}
+  .step{grid-template-columns:2.25rem minmax(0,1fr)}
+  .pair{grid-template-columns:minmax(0,1fr)}
+  .done{padding-left:0}
+  .pile{margin-top:2.25rem;padding:0 .5rem}
+  .ping:nth-child(n){--x:0rem}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none !important;transition:none !important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <a class="mark" href="https://vattrackr.de/">VatTrackr <span>Notify</span></a>
+  <div class="lang" role="group" aria-label="Sprache / Language">
+    <button type="button" data-lang="de" aria-pressed="true">DE</button>
+    <button type="button" data-lang="en" aria-pressed="false">EN</button>
+  </div>
+</header>
+
+<main>
+  <section class="intro">
+    <div>
+      <h1 data-t="h1"></h1>
+      <p class="lede" data-t="lede"></p>
+      <p class="needs" data-t="needs"></p>
+    </div>
+    <figure class="pile" id="pile">
+      <ol>
+        <li class="ping"><span class="ping-icon" aria-hidden="true"></span><div><div class="ping-head"><span class="ping-app" data-t="demo.app"></span><span class="ping-time" data-t="demo.t1"></span></div><p class="ping-text" data-t="demo.m1"></p></div></li>
+        <li class="ping"><span class="ping-icon" aria-hidden="true"></span><div><div class="ping-head"><span class="ping-app" data-t="demo.app"></span><span class="ping-time" data-t="demo.t2"></span></div><p class="ping-text" data-t="demo.m2"></p></div></li>
+        <li class="ping"><span class="ping-icon" aria-hidden="true"></span><div><div class="ping-head"><span class="ping-app" data-t="demo.app"></span><span class="ping-time" data-t="demo.t3"></span></div><p class="ping-text" data-t="demo.m3"></p></div></li>
+        <li class="ping"><span class="ping-icon" aria-hidden="true"></span><div><div class="ping-head"><span class="ping-app" data-t="demo.app"></span><span class="ping-time" data-t="demo.t4"></span></div><p class="ping-text" data-t="demo.m4"></p></div></li>
+        <li class="ping"><span class="ping-icon" aria-hidden="true"></span><div><div class="ping-head"><span class="ping-app" data-t="demo.app"></span><span class="ping-time" data-t="demo.t5"></span></div><p class="ping-text" data-t="demo.m5"></p></div></li>
+      </ol>
+      <figcaption data-t="demo.caption"></figcaption>
+    </figure>
+  </section>
+
+  <div class="alert" id="alert" role="alert" hidden></div>
+
+  <ol class="chain" id="chain">
+
+    <!-- 1 Plugin laden -->
+    <li class="step" id="s1" data-state="active">
+      <div class="rail"><span class="led" aria-hidden="true"></span></div>
+      <div>
+        <div class="head">
+          <h2 tabindex="-1"><span class="num">1</span><span data-t="s1.title"></span></h2>
+          <button type="button" class="link link-dim" data-reopen="1" data-t="reopen" hidden></button>
+        </div>
+        <p class="sum" data-t="s1.sum" hidden></p>
+        <div class="work">
+          <p data-t="s1.intro"></p>
+          <p class="note" id="t-windows" data-t="s1.windows" hidden></p>
+          <div class="row">
+            <button type="button" class="btn btn-pad" id="b-download" data-t="s1.download"></button>
+            <button type="button" class="btn btn-silk" id="b-dl-next" data-next data-t="next" hidden></button>
+          </div>
+          <div id="p-dl-fallback" hidden>
+            <p class="warn" data-t="s1.fallback"></p>
+            <p class="row" style="margin-top:1rem">
+              <a class="btn btn-silk" id="a-dll" download>VatTrackrNotify.dll</a>
+              <a class="btn btn-silk" id="a-ini" download="VatTrackrNotify.ini">VatTrackrNotify.ini</a>
+              <a class="btn btn-silk" id="a-cmd" download="Installieren.cmd">Installieren.cmd</a>
+              <button type="button" class="btn btn-pad" id="b-fb-next" data-t="next"></button>
+            </p>
+          </div>
+        </div>
+      </div>
+    </li>
+
+    <!-- 2 Installieren -->
+    <li class="step" id="s2" data-state="todo">
+      <div class="rail"><span class="led" aria-hidden="true"></span></div>
+      <div>
+        <div class="head">
+          <h2 tabindex="-1"><span class="num">2</span><span data-t="s2.title"></span></h2>
+        </div>
+        <p class="sum" data-t="s2.sum" hidden></p>
+        <div class="work" hidden>
+          <ol class="sub">
+            <li data-h="s2.a"></li>
+            <li data-h="s2.b"></li>
+            <li data-t="s2.c"></li>
+          </ol>
+          <p class="status" id="t-plugin"><span class="dot"></span><span data-t="s2.wait"></span></p>
+          <details id="d-manual">
+            <summary data-t="s2.manualTitle"></summary>
+            <ol class="sub" style="margin-top:.75rem">
+              <li data-t="s2.m1"></li>
+              <li>
+                <span data-h="s2.m2"></span>
+                <div class="copy">
+                  <code id="t-path">%LOCALAPPDATA%\vPilot\Plugins</code>
+                  <button type="button" class="btn btn-silk" data-copy="#t-path" data-t="copy"></button>
+                </div>
+              </li>
+              <li data-h="s2.m3"></li>
+              <li data-h="s2.m4"></li>
+              <li data-t="s2.m5"></li>
+            </ol>
+          </details>
+          <details id="d-help2">
+            <summary data-t="s2.helpTitle"></summary>
+            <ul>
+              <li data-h="s2.help1"></li>
+              <li data-h="s2.help2"></li>
+              <li data-h="s2.help3"></li>
+            </ul>
+          </details>
+        </div>
+      </div>
+    </li>
+
+    <!-- 3 Telegram verbinden -->
+    <li class="step" id="s3" data-state="todo">
+      <div class="rail"><span class="led" aria-hidden="true"></span></div>
+      <div>
+        <div class="head">
+          <h2 tabindex="-1"><span class="num">3</span><span data-t="s3.title"></span></h2>
+        </div>
+        <p class="sum" data-t="s3.sum" hidden></p>
+        <div class="work" hidden>
+          <p class="warn" id="t-fail" data-t="s3.failed" style="margin:0 0 1rem" hidden></p>
+          <div id="p-qr">
+            <div class="well pair">
+              <div class="qr" id="qr" role="img" data-t-aria="s3.qrAlt"></div>
+              <div>
+                <p data-t="s3.scan"></p>
+                <p><a class="btn btn-silk" id="a-open" target="_blank" rel="noopener" data-t="s3.open"></a></p>
+                <p class="note" id="t-find"></p>
+              </div>
+            </div>
+            <p class="status"><span class="dot"></span><span data-t="s3.wait"></span></p>
+          </div>
+          <form id="p-code" hidden>
+            <label for="code" data-t="s3.codeIntro"></label>
+            <div class="row">
+              <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="4" pattern="[0-9]{4}" required>
+              <button type="submit" class="btn btn-pad" data-t="s3.confirm"></button>
+            </div>
+            <p class="warn" id="t-code-err" hidden></p>
+          </form>
+        </div>
+      </div>
+    </li>
+
+    <!-- 4 Testen -->
+    <li class="step" id="s4" data-state="todo">
+      <div class="rail"><span class="led" aria-hidden="true"></span></div>
+      <div>
+        <div class="head">
+          <h2 tabindex="-1"><span class="num">4</span><span data-t="s4.title"></span></h2>
+        </div>
+        <p class="sum" data-t="s4.sum" hidden></p>
+        <div class="work" hidden>
+          <p class="status" id="t-linked" style="margin:0 0 1.25rem"><span class="dot"></span><span id="t-linked-text"></span></p>
+          <p data-t="s4.intro"></p>
+          <button type="button" class="btn btn-pad" id="b-test" data-t="s4.send"></button>
+          <p class="status" id="t-test" hidden><span class="dot"></span><span id="t-test-text"></span></p>
+          <div id="p-ask" hidden>
+            <p style="margin:1.25rem 0 .75rem" data-t="s4.ask"></p>
+            <div class="row">
+              <button type="button" class="btn btn-pad" id="b-yes" data-t="s4.yes"></button>
+              <button type="button" class="btn btn-silk" id="b-no" data-t="s4.no"></button>
+            </div>
+          </div>
+          <details id="d-help4">
+            <summary data-t="s4.helpTitle"></summary>
+            <ul>
+              <li data-h="s4.help1"></li>
+              <li data-h="s4.help2"></li>
+              <li data-h="s4.help3"></li>
+              <li data-h="s4.help4"></li>
+            </ul>
+          </details>
+        </div>
+      </div>
+    </li>
+  </ol>
+
+  <section class="done" id="done" hidden>
+    <h2 tabindex="-1" data-t="done.title"></h2>
+    <p data-t="done.lede"></p>
+    <ul>
+      <li data-t="done.l1"></li>
+      <li data-t="done.l2"></li>
+      <li data-t="done.l3"></li>
+      <li data-t="done.l4"></li>
+    </ul>
+    <p class="rule" data-h="done.rule"></p>
+    <h3 data-t="done.toneTitle"></h3>
+    <p data-t="done.tone"></p>
+    <h3 data-t="done.manageTitle"></h3>
+    <p data-h="done.m1"></p>
+    <p data-h="done.m2"></p>
+    <h3 data-t="done.updateTitle"></h3>
+    <p data-h="done.update"></p>
+    <h3 data-t="done.moreTitle"></h3>
+    <p data-h="done.more"></p>
+    <p><button type="button" class="link" id="b-reset" data-t="done.reset"></button></p>
+  </section>
+</main>
+
+<footer>
+  <p data-t="foot.privacy"></p>
+  <p data-t="foot.indep"></p>
+  <p class="foot-links">
+    <a href="https://vattrackr.de/">vattrackr.de</a>
+    <a id="a-privacy" data-t="foot.privacyLink" hidden></a>
+    <a id="a-imprint" data-t="foot.imprintLink" hidden></a>
+    <a id="a-source" data-t="foot.sourceLink" target="_blank" rel="noopener" hidden></a>
+    <span id="t-version"></span>
+  </p>
+</footer>
+
+</div>
+<div class="sr" aria-live="polite" id="live"></div>
+
+<script>
+/* qrcode-generator 2.0.4 – (c) 2009 Kazuhiko Arase – MIT License – https://github.com/kazuhikoarase/qrcode-generator */
+var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],f={},c=function(t,r){o=function(t){for(var r=new Array(t),e=0;e<t;e+=1){r[e]=new Array(t);for(var n=0;n<t;n+=1)r[e][n]=null}return r}(i=4*e+17),l(0,0),l(i-7,0),l(0,i-7),s(),h(),d(t,r),e>=7&&v(t),null==a&&(a=p(e,n,u)),w(a,r)},l=function(t,r){for(var e=-1;e<=7;e+=1)if(!(t+e<=-1||i<=t+e))for(var n=-1;n<=7;n+=1)r+n<=-1||i<=r+n||(o[t+e][r+n]=0<=e&&e<=6&&(0==n||6==n)||0<=n&&n<=6&&(0==e||6==e)||2<=e&&e<=4&&2<=n&&n<=4)},h=function(){for(var t=8;t<i-8;t+=1)null==o[t][6]&&(o[t][6]=t%2==0);for(var r=8;r<i-8;r+=1)null==o[6][r]&&(o[6][r]=r%2==0)},s=function(){for(var t=B.getPatternPosition(e),r=0;r<t.length;r+=1)for(var n=0;n<t.length;n+=1){var i=t[r],a=t[n];if(null==o[i][a])for(var u=-2;u<=2;u+=1)for(var f=-2;f<=2;f+=1)o[i+u][a+f]=-2==u||2==u||-2==f||2==f||0==u&&0==f}},v=function(t){for(var r=B.getBCHTypeNumber(e),n=0;n<18;n+=1){var a=!t&&1==(r>>n&1);o[Math.floor(n/3)][n%3+i-8-3]=a}for(n=0;n<18;n+=1){a=!t&&1==(r>>n&1);o[n%3+i-8-3][Math.floor(n/3)]=a}},d=function(t,r){for(var e=n<<3|r,a=B.getBCHTypeInfo(e),u=0;u<15;u+=1){var f=!t&&1==(a>>u&1);u<6?o[u][8]=f:u<8?o[u+1][8]=f:o[i-15+u][8]=f}for(u=0;u<15;u+=1){f=!t&&1==(a>>u&1);u<8?o[8][i-u-1]=f:u<9?o[8][15-u-1+1]=f:o[8][15-u-1]=f}o[i-8][8]=!t},w=function(t,r){for(var e=-1,n=i-1,a=7,u=0,f=B.getMaskFunction(r),c=i-1;c>0;c-=2)for(6==c&&(c-=1);;){for(var g=0;g<2;g+=1)if(null==o[n][c-g]){var l=!1;u<t.length&&(l=1==(t[u]>>>a&1)),f(n,c-g)&&(l=!l),o[n][c-g]=l,-1==(a-=1)&&(u+=1,a=7)}if((n+=e)<0||i<=n){n-=e,e=-e;break}}},p=function(t,r,e){for(var n=A.getRSBlocks(t,r),o=b(),i=0;i<e.length;i+=1){var a=e[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var u=0;for(i=0;i<n.length;i+=1)u+=n[i].dataCount;if(o.getLengthInBits()>8*u)throw"code length overflow. ("+o.getLengthInBits()+">"+8*u+")";for(o.getLengthInBits()+4<=8*u&&o.put(0,4);o.getLengthInBits()%8!=0;)o.putBit(!1);for(;!(o.getLengthInBits()>=8*u||(o.put(236,8),o.getLengthInBits()>=8*u));)o.put(17,8);return function(t,r){for(var e=0,n=0,o=0,i=new Array(r.length),a=new Array(r.length),u=0;u<r.length;u+=1){var f=r[u].dataCount,c=r[u].totalCount-f;n=Math.max(n,f),o=Math.max(o,c),i[u]=new Array(f);for(var g=0;g<i[u].length;g+=1)i[u][g]=255&t.getBuffer()[g+e];e+=f;var l=B.getErrorCorrectPolynomial(c),h=k(i[u],l.getLength()-1).mod(l);for(a[u]=new Array(l.getLength()-1),g=0;g<a[u].length;g+=1){var s=g+h.getLength()-a[u].length;a[u][g]=s>=0?h.getAt(s):0}}var v=0;for(g=0;g<r.length;g+=1)v+=r[g].totalCount;var d=new Array(v),w=0;for(g=0;g<n;g+=1)for(u=0;u<r.length;u+=1)g<i[u].length&&(d[w]=i[u][g],w+=1);for(g=0;g<o;g+=1)for(u=0;u<r.length;u+=1)g<a[u].length&&(d[w]=a[u][g],w+=1);return d}(o,n)};f.addData=function(t,r){var e=null;switch(r=r||"Byte"){case"Numeric":e=M(t);break;case"Alphanumeric":e=x(t);break;case"Byte":e=m(t);break;case"Kanji":e=L(t);break;default:throw"mode:"+r}u.push(e),a=null},f.isDark=function(t,r){if(t<0||i<=t||r<0||i<=r)throw t+","+r;return o[t][r]},f.getModuleCount=function(){return i},f.make=function(){if(e<1){for(var t=1;t<40;t++){for(var r=A.getRSBlocks(t,n),o=b(),i=0;i<u.length;i++){var a=u[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var g=0;for(i=0;i<r.length;i++)g+=r[i].dataCount;if(o.getLengthInBits()<=8*g)break}e=t}c(!1,function(){for(var t=0,r=0,e=0;e<8;e+=1){c(!0,e);var n=B.getLostPoint(f);(0==e||t>n)&&(t=n,r=e)}return r}())},f.createTableTag=function(t,r){t=t||2;var e="";e+='<table style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: "+(r=void 0===r?4*t:r)+"px;",e+='">',e+="<tbody>";for(var n=0;n<f.getModuleCount();n+=1){e+="<tr>";for(var o=0;o<f.getModuleCount();o+=1)e+='<td style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: 0px;",e+=" width: "+t+"px;",e+=" height: "+t+"px;",e+=" background-color: ",e+=f.isDark(n,o)?"#000000":"#ffffff",e+=";",e+='"/>';e+="</tr>"}return e+="</tbody>",e+="</table>"},f.createSvgTag=function(t,r,e,n){var o={};"object"==typeof arguments[0]&&(t=(o=arguments[0]).cellSize,r=o.margin,e=o.alt,n=o.title),t=t||2,r=void 0===r?4*t:r,(e="string"==typeof e?{text:e}:e||{}).text=e.text||null,e.id=e.text?e.id||"qrcode-description":null,(n="string"==typeof n?{text:n}:n||{}).text=n.text||null,n.id=n.text?n.id||"qrcode-title":null;var i,a,u,c,g=f.getModuleCount()*t+2*r,l="";for(c="l"+t+",0 0,"+t+" -"+t+",0 0,-"+t+"z ",l+='<svg version="1.1" xmlns="http://www.w3.org/2000/svg"',l+=o.scalable?"":' width="'+g+'px" height="'+g+'px"',l+=' viewBox="0 0 '+g+" "+g+'" ',l+=' preserveAspectRatio="xMinYMin meet"',l+=n.text||e.text?' role="img" aria-labelledby="'+y([n.id,e.id].join(" ").trim())+'"':"",l+=">",l+=n.text?'<title id="'+y(n.id)+'">'+y(n.text)+"</title>":"",l+=e.text?'<description id="'+y(e.id)+'">'+y(e.text)+"</description>":"",l+='<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>',l+='<path d="',a=0;a<f.getModuleCount();a+=1)for(u=a*t+r,i=0;i<f.getModuleCount();i+=1)f.isDark(a,i)&&(l+="M"+(i*t+r)+","+u+c);return l+='" stroke="transparent" fill="black"/>',l+="</svg>"},f.createDataURL=function(t,r){t=t||2,r=void 0===r?4*t:r;var e=f.getModuleCount()*t+2*r,n=r,o=e-r;return I(e,e,function(r,e){if(n<=r&&r<o&&n<=e&&e<o){var i=Math.floor((r-n)/t),a=Math.floor((e-n)/t);return f.isDark(a,i)?0:1}return 1})},f.createImgTag=function(t,r,e){t=t||2,r=void 0===r?4*t:r;var n=f.getModuleCount()*t+2*r,o="";return o+="<img",o+=' src="',o+=f.createDataURL(t,r),o+='"',o+=' width="',o+=n,o+='"',o+=' height="',o+=n,o+='"',e&&(o+=' alt="',o+=y(e),o+='"'),o+="/>"};var y=function(t){for(var r="",e=0;e<t.length;e+=1){var n=t.charAt(e);switch(n){case"<":r+="&lt;";break;case">":r+="&gt;";break;case"&":r+="&amp;";break;case'"':r+="&quot;";break;default:r+=n}}return r};return f.createASCII=function(t,r){if((t=t||1)<2)return function(t){t=void 0===t?2:t;var r,e,n,o,i,a=1*f.getModuleCount()+2*t,u=t,c=a-t,g={"██":"█","█ ":"▀"," █":"▄","  ":" "},l={"██":"▀","█ ":"▀"," █":" ","  ":" "},h="";for(r=0;r<a;r+=2){for(n=Math.floor((r-u)/1),o=Math.floor((r+1-u)/1),e=0;e<a;e+=1)i="█",u<=e&&e<c&&u<=r&&r<c&&f.isDark(n,Math.floor((e-u)/1))&&(i=" "),u<=e&&e<c&&u<=r+1&&r+1<c&&f.isDark(o,Math.floor((e-u)/1))?i+=" ":i+="█",h+=t<1&&r+1>=c?l[i]:g[i];h+="\n"}return a%2&&t>0?h.substring(0,h.length-a-1)+Array(a+1).join("▀"):h.substring(0,h.length-1)}(r);t-=1,r=void 0===r?2*t:r;var e,n,o,i,a=f.getModuleCount()*t+2*r,u=r,c=a-r,g=Array(t+1).join("██"),l=Array(t+1).join("  "),h="",s="";for(e=0;e<a;e+=1){for(o=Math.floor((e-u)/t),s="",n=0;n<a;n+=1)i=1,u<=n&&n<c&&u<=e&&e<c&&f.isDark(o,Math.floor((n-u)/t))&&(i=0),s+=i?g:l;for(o=0;o<t;o+=1)h+=s+"\n"}return h.substring(0,h.length-1)},f.renderTo2dContext=function(t,r){r=r||2;for(var e=f.getModuleCount(),n=0;n<e;n++)for(var o=0;o<e;o++)t.fillStyle=f.isDark(n,o)?"black":"white",t.fillRect(o*r,n*r,r,r)},f};t.stringToBytes=(t.stringToBytesFuncs={default:function(t){for(var r=[],e=0;e<t.length;e+=1){var n=t.charCodeAt(e);r.push(255&n)}return r}}).default,t.createStringToBytes=function(t,r){var e=function(){for(var e=S(t),n=function(){var t=e.read();if(-1==t)throw"eof";return t},o=0,i={};;){var a=e.read();if(-1==a)break;var u=n(),f=n()<<8|n();i[String.fromCharCode(a<<8|u)]=f,o+=1}if(o!=r)throw o+" != "+r;return i}(),n="?".charCodeAt(0);return function(t){for(var r=[],o=0;o<t.length;o+=1){var i=t.charCodeAt(o);if(i<128)r.push(i);else{var a=e[t.charAt(o)];"number"==typeof a?(255&a)==a?r.push(a):(r.push(a>>>8),r.push(255&a)):r.push(n)}}return r}};var r,e,n,o,i,a=1,u=2,f=4,c=8,g={L:1,M:0,Q:3,H:2},l=0,h=1,s=2,v=3,d=4,w=5,p=6,y=7,B=(r=[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],e=1335,n=7973,i=function(t){for(var r=0;0!=t;)r+=1,t>>>=1;return r},(o={}).getBCHTypeInfo=function(t){for(var r=t<<10;i(r)-i(e)>=0;)r^=e<<i(r)-i(e);return 21522^(t<<10|r)},o.getBCHTypeNumber=function(t){for(var r=t<<12;i(r)-i(n)>=0;)r^=n<<i(r)-i(n);return t<<12|r},o.getPatternPosition=function(t){return r[t-1]},o.getMaskFunction=function(t){switch(t){case l:return function(t,r){return(t+r)%2==0};case h:return function(t,r){return t%2==0};case s:return function(t,r){return r%3==0};case v:return function(t,r){return(t+r)%3==0};case d:return function(t,r){return(Math.floor(t/2)+Math.floor(r/3))%2==0};case w:return function(t,r){return t*r%2+t*r%3==0};case p:return function(t,r){return(t*r%2+t*r%3)%2==0};case y:return function(t,r){return(t*r%3+(t+r)%2)%2==0};default:throw"bad maskPattern:"+t}},o.getErrorCorrectPolynomial=function(t){for(var r=k([1],0),e=0;e<t;e+=1)r=r.multiply(k([1,C.gexp(e)],0));return r},o.getLengthInBits=function(t,r){if(1<=r&&r<10)switch(t){case a:return 10;case u:return 9;case f:case c:return 8;default:throw"mode:"+t}else if(r<27)switch(t){case a:return 12;case u:return 11;case f:return 16;case c:return 10;default:throw"mode:"+t}else{if(!(r<41))throw"type:"+r;switch(t){case a:return 14;case u:return 13;case f:return 16;case c:return 12;default:throw"mode:"+t}}},o.getLostPoint=function(t){for(var r=t.getModuleCount(),e=0,n=0;n<r;n+=1)for(var o=0;o<r;o+=1){for(var i=0,a=t.isDark(n,o),u=-1;u<=1;u+=1)if(!(n+u<0||r<=n+u))for(var f=-1;f<=1;f+=1)o+f<0||r<=o+f||0==u&&0==f||a==t.isDark(n+u,o+f)&&(i+=1);i>5&&(e+=3+i-5)}for(n=0;n<r-1;n+=1)for(o=0;o<r-1;o+=1){var c=0;t.isDark(n,o)&&(c+=1),t.isDark(n+1,o)&&(c+=1),t.isDark(n,o+1)&&(c+=1),t.isDark(n+1,o+1)&&(c+=1),0!=c&&4!=c||(e+=3)}for(n=0;n<r;n+=1)for(o=0;o<r-6;o+=1)t.isDark(n,o)&&!t.isDark(n,o+1)&&t.isDark(n,o+2)&&t.isDark(n,o+3)&&t.isDark(n,o+4)&&!t.isDark(n,o+5)&&t.isDark(n,o+6)&&(e+=40);for(o=0;o<r;o+=1)for(n=0;n<r-6;n+=1)t.isDark(n,o)&&!t.isDark(n+1,o)&&t.isDark(n+2,o)&&t.isDark(n+3,o)&&t.isDark(n+4,o)&&!t.isDark(n+5,o)&&t.isDark(n+6,o)&&(e+=40);var g=0;for(o=0;o<r;o+=1)for(n=0;n<r;n+=1)t.isDark(n,o)&&(g+=1);return e+=Math.abs(100*g/r/r-50)/5*10},o),C=function(){for(var t=new Array(256),r=new Array(256),e=0;e<8;e+=1)t[e]=1<<e;for(e=8;e<256;e+=1)t[e]=t[e-4]^t[e-5]^t[e-6]^t[e-8];for(e=0;e<255;e+=1)r[t[e]]=e;var n={glog:function(t){if(t<1)throw"glog("+t+")";return r[t]},gexp:function(r){for(;r<0;)r+=255;for(;r>=256;)r-=255;return t[r]}};return n}();function k(t,r){if(void 0===t.length)throw t.length+"/"+r;var e=function(){for(var e=0;e<t.length&&0==t[e];)e+=1;for(var n=new Array(t.length-e+r),o=0;o<t.length-e;o+=1)n[o]=t[o+e];return n}(),n={getAt:function(t){return e[t]},getLength:function(){return e.length},multiply:function(t){for(var r=new Array(n.getLength()+t.getLength()-1),e=0;e<n.getLength();e+=1)for(var o=0;o<t.getLength();o+=1)r[e+o]^=C.gexp(C.glog(n.getAt(e))+C.glog(t.getAt(o)));return k(r,0)},mod:function(t){if(n.getLength()-t.getLength()<0)return n;for(var r=C.glog(n.getAt(0))-C.glog(t.getAt(0)),e=new Array(n.getLength()),o=0;o<n.getLength();o+=1)e[o]=n.getAt(o);for(o=0;o<t.getLength();o+=1)e[o]^=C.gexp(C.glog(t.getAt(o))+r);return k(e,0).mod(t)}};return n}var A=function(){var t=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12,7,37,13],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],r=function(t,r){var e={};return e.totalCount=t,e.dataCount=r,e},e={};return e.getRSBlocks=function(e,n){var o=function(r,e){switch(e){case g.L:return t[4*(r-1)+0];case g.M:return t[4*(r-1)+1];case g.Q:return t[4*(r-1)+2];case g.H:return t[4*(r-1)+3];default:return}}(e,n);if(void 0===o)throw"bad rs block @ typeNumber:"+e+"/errorCorrectionLevel:"+n;for(var i=o.length/3,a=[],u=0;u<i;u+=1)for(var f=o[3*u+0],c=o[3*u+1],l=o[3*u+2],h=0;h<f;h+=1)a.push(r(c,l));return a},e}(),b=function(){var t=[],r=0,e={getBuffer:function(){return t},getAt:function(r){var e=Math.floor(r/8);return 1==(t[e]>>>7-r%8&1)},put:function(t,r){for(var n=0;n<r;n+=1)e.putBit(1==(t>>>r-n-1&1))},getLengthInBits:function(){return r},putBit:function(e){var n=Math.floor(r/8);t.length<=n&&t.push(0),e&&(t[n]|=128>>>r%8),r+=1}};return e},M=function(t){var r=a,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+2<r.length;)t.put(o(r.substring(n,n+3)),10),n+=3;n<r.length&&(r.length-n==1?t.put(o(r.substring(n,n+1)),4):r.length-n==2&&t.put(o(r.substring(n,n+2)),7))}},o=function(t){for(var r=0,e=0;e<t.length;e+=1)r=10*r+i(t.charAt(e));return r},i=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);throw"illegal char :"+t};return n},x=function(t){var r=u,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+1<r.length;)t.put(45*o(r.charAt(n))+o(r.charAt(n+1)),11),n+=2;n<r.length&&t.put(o(r.charAt(n)),6)}},o=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);if("A"<=t&&t<="Z")return t.charCodeAt(0)-"A".charCodeAt(0)+10;switch(t){case" ":return 36;case"$":return 37;case"%":return 38;case"*":return 39;case"+":return 40;case"-":return 41;case".":return 42;case"/":return 43;case":":return 44;default:throw"illegal char :"+t}};return n},m=function(r){var e=f,n=t.stringToBytes(r),o={getMode:function(){return e},getLength:function(t){return n.length},write:function(t){for(var r=0;r<n.length;r+=1)t.put(n[r],8)}};return o},L=function(r){var e=c,n=t.stringToBytesFuncs.SJIS;if(!n)throw"sjis not supported.";!function(){var t=n("友");if(2!=t.length||38726!=(t[0]<<8|t[1]))throw"sjis not supported."}();var o=n(r),i={getMode:function(){return e},getLength:function(t){return~~(o.length/2)},write:function(t){for(var r=o,e=0;e+1<r.length;){var n=(255&r[e])<<8|255&r[e+1];if(33088<=n&&n<=40956)n-=33088;else{if(!(57408<=n&&n<=60351))throw"illegal char at "+(e+1)+"/"+n;n-=49472}n=192*(n>>>8&255)+(255&n),t.put(n,13),e+=2}if(e<r.length)throw"illegal char at "+(e+1)}};return i},D=function(){var t=[],r={writeByte:function(r){t.push(255&r)},writeShort:function(t){r.writeByte(t),r.writeByte(t>>>8)},writeBytes:function(t,e,n){e=e||0,n=n||t.length;for(var o=0;o<n;o+=1)r.writeByte(t[o+e])},writeString:function(t){for(var e=0;e<t.length;e+=1)r.writeByte(t.charCodeAt(e))},toByteArray:function(){return t},toString:function(){var r="";r+="[";for(var e=0;e<t.length;e+=1)e>0&&(r+=","),r+=t[e];return r+="]"}};return r},S=function(t){var r=t,e=0,n=0,o=0,i={read:function(){for(;o<8;){if(e>=r.length){if(0==o)return-1;throw"unexpected end of file./"+o}var t=r.charAt(e);if(e+=1,"="==t)return o=0,-1;t.match(/^\s$/)||(n=n<<6|a(t.charCodeAt(0)),o+=6)}var i=n>>>o-8&255;return o-=8,i}},a=function(t){if(65<=t&&t<=90)return t-65;if(97<=t&&t<=122)return t-97+26;if(48<=t&&t<=57)return t-48+52;if(43==t)return 62;if(47==t)return 63;throw"c:"+t};return i},I=function(t,r,e){for(var n=function(t,r){var e=t,n=r,o=new Array(t*r),i={setPixel:function(t,r,n){o[r*e+t]=n},write:function(t){t.writeString("GIF87a"),t.writeShort(e),t.writeShort(n),t.writeByte(128),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(255),t.writeByte(255),t.writeByte(255),t.writeString(","),t.writeShort(0),t.writeShort(0),t.writeShort(e),t.writeShort(n),t.writeByte(0);var r=a(2);t.writeByte(2);for(var o=0;r.length-o>255;)t.writeByte(255),t.writeBytes(r,o,255),o+=255;t.writeByte(r.length-o),t.writeBytes(r,o,r.length-o),t.writeByte(0),t.writeString(";")}},a=function(t){for(var r=1<<t,e=1+(1<<t),n=t+1,i=u(),a=0;a<r;a+=1)i.add(String.fromCharCode(a));i.add(String.fromCharCode(r)),i.add(String.fromCharCode(e));var f,c,g,l=D(),h=(f=l,c=0,g=0,{write:function(t,r){if(t>>>r!=0)throw"length over";for(;c+r>=8;)f.writeByte(255&(t<<c|g)),r-=8-c,t>>>=8-c,g=0,c=0;g|=t<<c,c+=r},flush:function(){c>0&&f.writeByte(g)}});h.write(r,n);var s=0,v=String.fromCharCode(o[s]);for(s+=1;s<o.length;){var d=String.fromCharCode(o[s]);s+=1,i.contains(v+d)?v+=d:(h.write(i.indexOf(v),n),i.size()<4095&&(i.size()==1<<n&&(n+=1),i.add(v+d)),v=d)}return h.write(i.indexOf(v),n),h.write(e,n),h.flush(),l.toByteArray()},u=function(){var t={},r=0,e={add:function(n){if(e.contains(n))throw"dup key:"+n;t[n]=r,r+=1},size:function(){return r},indexOf:function(r){return t[r]},contains:function(r){return void 0!==t[r]}};return e};return i}(t,r),o=0;o<r;o+=1)for(var i=0;i<t;i+=1)n.setPixel(i,o,e(i,o));var a=D();n.write(a);for(var u=function(){var t=0,r=0,e=0,n="",o={},i=function(t){n+=String.fromCharCode(a(63&t))},a=function(t){if(t<0);else{if(t<26)return 65+t;if(t<52)return t-26+97;if(t<62)return t-52+48;if(62==t)return 43;if(63==t)return 47}throw"n:"+t};return o.writeByte=function(n){for(t=t<<8|255&n,r+=8,e+=1;r>=6;)i(t>>>r-6),r-=6},o.flush=function(){if(r>0&&(i(t<<6-r),t=0,r=0),e%3!=0)for(var o=3-e%3,a=0;a<o;a+=1)n+="="},o.toString=function(){return n},o}(),f=a.toByteArray(),c=0;c<f.length;c+=1)u.writeByte(f[c]);return u.flush(),"data:image/gif;base64,"+u};return t}();qrcode.stringToBytesFuncs["UTF-8"]=function(t){return function(t){for(var r=[],e=0;e<t.length;e++){var n=t.charCodeAt(e);n<128?r.push(n):n<2048?r.push(192|n>>6,128|63&n):n<55296||n>=57344?r.push(224|n>>12,128|n>>6&63,128|63&n):(e++,n=65536+((1023&n)<<10|1023&t.charCodeAt(e)),r.push(240|n>>18,128|n>>12&63,128|n>>6&63,128|63&n))}return r}(t)},function(t){"function"==typeof define&&define.amd?define([],t):"object"==typeof exports&&(module.exports=t())}(function(){return qrcode});
+</script>
+<script>
+(function () {
+'use strict';
+
+/* ------------------------------------------------------------------ Einstellungen
+   Hier anpassen, wenn die Dateien anders liegen. */
+var CONFIG = {
+  api: 'api.php',            // Adresse von api.php; absolut angeben, wenn diese Seite auf einer anderen Domain liegt
+  files: 'download/',        // Ordner mit VatTrackrNotify.dll und VatTrackrNotify.zip
+  privacy: 'https://vattrackr.de/datenschutz.php',   // leer = Link wird nicht gezeigt
+  imprint: 'https://vattrackr.de/impressum.php',     // leer = Link wird nicht gezeigt
+  source: 'https://github.com/JeeAraux/VatNotify'    // Quelltext; leer = Link wird nicht gezeigt
+};
+
+/* Dateien fuers Paket. Sie werden beim Bau der Seite eingebettet (web/build.sh), damit der
+   Download nicht davon abhaengt, ob der Server .ini-, .cmd- und .txt-Dateien ausliefert. */
+var FILE_INI = "; VatTrackr Notify - Einstellungen / settings\r\n; Einrichtung / setup: https://vattrackr.de/vatnotify/\r\n\r\n[VatTrackrNotify]\r\n\r\n; Beides traegt die Einrichtung selbst ein. / Both are filled in by the setup.\r\nKey=\r\nPair=\r\n\r\n; Adresse des Dienstes, bitte nicht aendern / service address, please do not change\r\nServer=https://vattrackr.de/vatnotify/api.php\r\n";
+var FILE_CMD = "@echo off\r\nsetlocal\r\ntitle VatTrackr Notify\r\necho.\r\necho   VatTrackr Notify - Installation\r\necho   ===============================\r\necho.\r\n\r\nrem Dieses Skript kopiert das Plugin in den Plugins-Ordner von vPilot und hebt die\r\nrem Sperre auf, die Windows auf heruntergeladene Dateien legt. Es aendert sonst nichts.\r\n\r\nset \"SRC=%~dp0\"\r\nif not exist \"%SRC%VatTrackrNotify.dll\" goto :notunzipped\r\n\r\nrem --- vPilot-Ordner suchen: erst der Eintrag von vPilot selbst, dann der uebliche Ort\r\nset \"VP=\"\r\nreg query \"HKCU\\Software\\vPilot\" /v Install_Dir >nul 2>&1\r\nif errorlevel 1 goto :usual\r\nfor /f \"tokens=2,*\" %%a in ('reg query \"HKCU\\Software\\vPilot\" /v Install_Dir') do if /i \"%%a\"==\"REG_SZ\" set \"VP=%%b\"\r\nif not defined VP goto :usual\r\nif exist \"%VP%\\vPilot.exe\" goto :found\r\n:usual\r\nset \"VP=%LOCALAPPDATA%\\vPilot\"\r\n:found\r\nif not exist \"%VP%\\vPilot.exe\" goto :novpilot\r\n\r\nrem --- vPilot darf nicht laufen, sonst ist die Datei gesperrt\r\nset \"RUNNING=\"\r\ntasklist /fi \"imagename eq vPilot.exe\" /nh >\"%TEMP%\\vtn-tasks.txt\" 2>nul\r\nfor /f \"usebackq tokens=1\" %%a in (\"%TEMP%\\vtn-tasks.txt\") do if /i \"%%a\"==\"vPilot.exe\" set \"RUNNING=1\"\r\ndel \"%TEMP%\\vtn-tasks.txt\" >nul 2>&1\r\nif defined RUNNING goto :running\r\n\r\nrem --- Update: eine vorhandene Einstellungsdatei mit Schluessel bleibt erhalten. Kommt das\r\nrem     Paket frisch von der Einrichtungsseite (Pair= ist gefuellt), wird sie ersetzt.\r\nset \"KEEP=\"\r\nset \"OLDKEY=\"\r\nset \"NEWPAIR=\"\r\nif not exist \"%VP%\\Plugins\\VatTrackrNotify.ini\" goto :copy\r\nfor /f \"usebackq tokens=1,* delims==\" %%a in (\"%VP%\\Plugins\\VatTrackrNotify.ini\") do if /i \"%%a\"==\"Key\" if not \"%%b\"==\"\" set \"OLDKEY=1\"\r\nfor /f \"usebackq tokens=1,* delims==\" %%a in (\"%SRC%VatTrackrNotify.ini\") do if /i \"%%a\"==\"Pair\" if not \"%%b\"==\"\" set \"NEWPAIR=1\"\r\nif not defined OLDKEY goto :copy\r\nif defined NEWPAIR goto :copy\r\nset \"KEEP=1\"\r\n\r\n:copy\r\nif not exist \"%VP%\\Plugins\" mkdir \"%VP%\\Plugins\"\r\ncopy /y \"%SRC%VatTrackrNotify.dll\" \"%VP%\\Plugins\\\" >nul\r\nif errorlevel 1 goto :copyfailed\r\nif defined KEEP goto :unblock\r\ncopy /y \"%SRC%VatTrackrNotify.ini\" \"%VP%\\Plugins\\\" >nul\r\nif errorlevel 1 goto :copyfailed\r\n\r\n:unblock\r\nrem --- Sperre fuer heruntergeladene Dateien aufheben, sonst laedt vPilot die DLL nicht\r\nset \"VTN_DLL=%VP%\\Plugins\\VatTrackrNotify.dll\"\r\npowershell -NoProfile -Command \"Unblock-File -LiteralPath $env:VTN_DLL\" >nul 2>&1\r\npowershell -NoProfile -Command \"if (Get-Item -LiteralPath $env:VTN_DLL -Stream Zone.Identifier -ErrorAction SilentlyContinue) { exit 1 } else { exit 0 }\" >nul 2>&1\r\nif errorlevel 1 goto :blocked\r\n\r\necho   Fertig. Das Plugin liegt in:\r\necho   Done. The plugin is in:\r\necho     %VP%\\Plugins\r\necho.\r\nif defined KEEP goto :updated\r\necho   Starte jetzt vPilot. Die Einrichtung geht im Browser weiter.\r\necho   Now start vPilot. The setup continues in your browser.\r\necho.\r\npause\r\nexit /b 0\r\n\r\n:updated\r\necho   Deine bisherige Einrichtung bleibt erhalten. Starte jetzt vPilot.\r\necho   Your existing setup is kept. Now start vPilot.\r\necho.\r\npause\r\nexit /b 0\r\n\r\n:notunzipped\r\necho   Bitte zuerst das Paket entpacken: Rechtsklick auf die ZIP-Datei, \"Alle extrahieren\".\r\necho   Dann diese Datei im entpackten Ordner noch einmal starten.\r\necho.\r\necho   Please unzip the package first: right-click the ZIP file, \"Extract all\".\r\necho   Then run this file again from the unzipped folder.\r\ngoto :failed\r\n\r\n:novpilot\r\necho   vPilot wurde nicht gefunden. Ist es installiert?\r\necho   vPilot was not found. Is it installed?\r\ngoto :failed\r\n\r\n:running\r\necho   vPilot laeuft noch. Bitte vPilot beenden und diese Datei noch einmal starten.\r\necho   vPilot is still running. Please close vPilot and run this file again.\r\ngoto :failed\r\n\r\n:copyfailed\r\necho   Die Dateien liessen sich nicht kopieren nach:\r\necho   The files could not be copied to:\r\necho     %VP%\\Plugins\r\ngoto :failed\r\n\r\n:blocked\r\necho   Die Dateien sind kopiert, aber Windows sperrt die DLL noch.\r\necho   Bitte von Hand freigeben: Rechtsklick auf VatTrackrNotify.dll, \"Eigenschaften\",\r\necho   unten den Haken bei \"Zulassen\" setzen, OK. Der Ordner:\r\necho.\r\necho   The files are copied, but Windows still blocks the DLL.\r\necho   Please unblock it by hand: right-click VatTrackrNotify.dll, \"Properties\",\r\necho   tick \"Unblock\" at the bottom, OK. The folder:\r\necho     %VP%\\Plugins\r\ngoto :failed\r\n\r\n:failed\r\necho.\r\npause\r\nexit /b 1\r\n";
+var FILE_README = "VatTrackr Notify 1.1.0 - vPilot plugin\r\n======================================\r\n\r\nDEUTSCH\r\n-------\r\nSchickt dir eine Telegram-Nachricht aufs Handy, sobald dich auf VATSIM ein Lotse\r\nanschreibt (Contact me), dich jemand privat anschreibt, ein SELCAL kommt oder die\r\nVerbindung abbricht.\r\n\r\nSo geht es:\r\n  1. vPilot beenden.\r\n  2. Dieses Paket entpacken (Rechtsklick auf die ZIP-Datei, \"Alle extrahieren\").\r\n  3. Im entpackten Ordner \"Installieren.cmd\" doppelt anklicken. Fragt Windows nach,\r\n     bestaetige mit \"Ausfuehren\".\r\n  4. vPilot starten. Die Einrichtungsseite oeffnet sich im Browser, falls sie nicht\r\n     schon offen ist. Dort verbindest du Telegram: QR-Code scannen, Code eingeben, fertig.\r\n\r\nDie Anleitung mit Bildern:  https://vattrackr.de/vatnotify/\r\n\r\nLieber von Hand?\r\n  VatTrackrNotify.dll und VatTrackrNotify.ini in den Plugins-Ordner von vPilot legen:\r\n    %LOCALAPPDATA%\\vPilot\\Plugins\r\n  Dann Rechtsklick auf VatTrackrNotify.dll > Eigenschaften > unten den Haken bei\r\n  \"Zulassen\" setzen > OK. Windows sperrt heruntergeladene DLL-Dateien, und vPilot\r\n  laedt das Plugin sonst nicht.\r\n\r\nKontrolle: Nach dem Start von vPilot liegt im Plugins-Ordner die Datei\r\nVatTrackrNotify.log. Darin steht, ob das Plugin laeuft. Fehlt die Datei, hat vPilot\r\ndas Plugin nicht geladen.\r\n\r\nUpdate: vPilot beenden, das neue Paket entpacken und \"Installieren.cmd\" starten.\r\nDeine Verbindung zu Telegram bleibt dabei bestehen.\r\n\r\nWas gemeldet wird, stellst du im Bot mit /settings ein.\r\nAbmelden und alle Daten loeschen: dem Bot /stop schicken und beide Dateien aus dem\r\nPlugins-Ordner entfernen.\r\n\r\nWichtig: Die Benachrichtigung ersetzt nicht deine Anwesenheit. Es gelten die VATSIM-Regeln\r\nzu unbeaufsichtigten Verbindungen; auf eine Kontaktaufforderung musst du zuegig reagieren.\r\n\r\n\r\nENGLISH\r\n-------\r\nSends a Telegram message to your phone as soon as a controller messages you on VATSIM\r\n(contact me), someone sends you a private message, a SELCAL arrives or the connection drops.\r\n\r\nHow to set it up:\r\n  1. Close vPilot.\r\n  2. Unzip this package (right-click the ZIP file, \"Extract all\").\r\n  3. In the unzipped folder, double-click \"Installieren.cmd\". If Windows asks,\r\n     confirm with \"Run\".\r\n  4. Start vPilot. The setup page opens in your browser unless it is open already.\r\n     Connect Telegram there: scan the QR code, enter the code, done.\r\n\r\nThe guide with pictures:  https://vattrackr.de/vatnotify/\r\n\r\nRather by hand?\r\n  Put VatTrackrNotify.dll and VatTrackrNotify.ini into vPilot's Plugins folder:\r\n    %LOCALAPPDATA%\\vPilot\\Plugins\r\n  Then right-click VatTrackrNotify.dll > Properties > tick \"Unblock\" at the bottom > OK.\r\n  Windows blocks downloaded DLL files, and vPilot will not load the plugin otherwise.\r\n\r\nCheck: after vPilot has started, the Plugins folder contains the file\r\nVatTrackrNotify.log. It says whether the plugin is running. If the file is missing,\r\nvPilot did not load the plugin.\r\n\r\nUpdating: close vPilot, unzip the new package and run \"Installieren.cmd\". Your\r\nTelegram connection stays in place.\r\n\r\nChoose what is reported with /settings in the bot.\r\nTo sign off and delete all your data: send /stop to the bot and remove both files from\r\nthe Plugins folder.\r\n\r\nImportant: a notification does not replace being there. VATSIM's rules on unattended\r\nconnections apply; you must respond promptly to a contact request.\r\n";
+
+/* ------------------------------------------------------------------ Texte */
+var TEXT = {
+de: {
+  'title': 'VatTrackr Notify – Einrichtung',
+  'h1': 'Dein Handy meldet sich, wenn dich ein Lotse ruft.',
+  'lede': 'VatTrackr Notify schickt dir eine Telegram-Nachricht, sobald dich auf VATSIM jemand in vPilot anschreibt. Kostenlos und in etwa drei Minuten eingerichtet.',
+  'needs': 'Du brauchst einen Windows-PC mit vPilot und ein Handy mit Telegram.',
+  'demo.app': 'VatTrackr Notify',
+  'demo.caption': 'Beispiele: So kommen die Meldungen auf deinem Handy an.',
+  'demo.t1': 'jetzt', 'demo.t2': 'vor 4 Min.', 'demo.t3': 'vor 19 Min.', 'demo.t4': 'vor 42 Min.', 'demo.t5': 'vor 1 Std.',
+  'demo.m1': '📡 Contact me: EDDM_N_APP\nBitte melde dich auf 123.905.',
+  'demo.m2': '✉️ Private Nachricht von EDDM_TWR\nDein Transponder steht noch auf Standby.',
+  'demo.m3': '🔔 SELCAL von EGGX_FSS',
+  'demo.m4': '🟢 EDDF_TWR ist jetzt online.\nAbbestellen: /unwatch EDDF',
+  'demo.m5': '🔌 Verbindung zu VATSIM getrennt\nvPilot ist nicht mehr mit dem Netzwerk verbunden.',
+  'next': 'Weiter',
+  'reopen': 'Öffnen',
+  'copy': 'Kopieren',
+  'copied': 'Kopiert',
+
+  's1.title': 'Plugin laden',
+  's1.sum': 'Paket geladen.',
+  's1.intro': 'Das Paket enthält das Plugin für vPilot und ein kleines Installationsprogramm, das es an die richtige Stelle legt.',
+  's1.windows': 'Das Plugin läuft nur unter Windows. Öffne diese Seite an dem PC, auf dem vPilot läuft.',
+  's1.download': 'Paket herunterladen',
+  's1.building': 'Paket wird gebaut …',
+  's1.fallback': 'Das Paket ließ sich nicht bauen. Lade stattdessen die drei Dateien einzeln in einen gemeinsamen Ordner:',
+
+  's2.title': 'Installieren',
+  's2.sum': 'Plugin läuft.',
+  's2.a': 'Entpacke das Paket: Rechtsklick auf <code>VatTrackrNotify.zip</code>, dann „Alle extrahieren“.',
+  's2.b': 'Doppelklicke im entpackten Ordner auf <code>Installieren.cmd</code>. Fragt Windows nach, wähle „Ausführen“. Bei einem blauen Hinweisfenster erst „Weitere Informationen“, dann „Trotzdem ausführen“.',
+  's2.c': 'Starte vPilot.',
+  's2.wait': 'Warte auf dein Plugin. Diese Seite merkt von selbst, wenn vPilot es geladen hat.',
+  's2.manualTitle': 'Lieber von Hand installieren?',
+  's2.m1': 'Beende vPilot, falls es läuft.',
+  's2.m2': 'Öffne den Plugins-Ordner: Drücke <kbd>Windows-Taste</kbd> + <kbd>R</kbd>, füge diese Zeile ein und drücke Enter.',
+  's2.m3': 'Lege aus dem entpackten Paket <code>VatTrackrNotify.dll</code> und <code>VatTrackrNotify.ini</code> in diesen Ordner.',
+  's2.m4': 'Gib die Datei frei: Rechtsklick auf <code>VatTrackrNotify.dll</code>, dann „Eigenschaften“. Setze unten den Haken bei „Zulassen“ und bestätige mit OK. Windows sperrt heruntergeladene DLL-Dateien, und vPilot lädt das Plugin sonst nicht.',
+  's2.m5': 'Starte vPilot.',
+  's2.helpTitle': 'vPilot läuft, aber hier tut sich nichts?',
+  's2.help1': '<strong>Sieh in die Logdatei.</strong> Nach dem Start von vPilot liegt im Plugins-Ordner die Datei <code>VatTrackrNotify.log</code>. Darin steht, was das Plugin gerade tut. Fehlt die Datei, hat vPilot das Plugin nicht geladen.',
+  's2.help2': '<strong>Die Datei ist noch gesperrt.</strong> Steht in den Eigenschaften von <code>VatTrackrNotify.dll</code> unten „Zulassen“, setze den Haken, bestätige mit OK und starte vPilot neu.',
+  's2.help3': '<strong>Es hat sich ein zweites Fenster dieser Seite geöffnet.</strong> Dann mach dort weiter. Das Plugin öffnet die Seite selbst, wenn es sie nicht findet.',
+
+  's3.title': 'Telegram verbinden',
+  's3.sum': 'Telegram ist verbunden.',
+  's3.qrAlt': 'QR-Code, der den VatTrackr-Bot in Telegram öffnet',
+  's3.scan': 'Scanne den Code mit der Kamera deines Handys. Telegram öffnet den VatTrackr-Bot. Tippe dort auf „Starten“.',
+  's3.open': 'Telegram auf diesem Gerät öffnen',
+  's3.find': 'Der Bot heißt @{bot}.',
+  's3.wait': 'Warte, bis du im Bot auf „Starten“ getippt hast …',
+  's3.codeIntro': 'Der Bot hat dir einen vierstelligen Code geschickt. Gib ihn hier ein:',
+  's3.confirm': 'Bestätigen',
+  's3.wrong': 'Der Code stimmt nicht. Du hast noch {n} Versuche.',
+  's3.failed': 'Zu viele falsche Codes. Scanne den QR-Code noch einmal, dann schickt dir der Bot einen neuen Code.',
+
+  's4.title': 'Testen',
+  's4.sum': 'Testnachricht ist angekommen.',
+  's4.linkWait': 'Dein Plugin holt sich gerade den Schlüssel …',
+  's4.linkOk': 'Dein Plugin ist verbunden (Version {v}).',
+  's4.intro': 'Schick dir eine Testnachricht aufs Handy. Sie sieht aus wie eine echte Kontaktaufforderung.',
+  's4.send': 'Testnachricht senden',
+  's4.again': 'Noch einmal senden',
+  's4.sending': 'Sende …',
+  's4.sent': 'Gesendet. Schau auf dein Handy.',
+  's4.ask': 'Ist die Nachricht angekommen?',
+  's4.yes': 'Ja, ist angekommen',
+  's4.no': 'Nein',
+  's4.rate': 'Zu viele Nachrichten in kurzer Zeit. Warte eine Minute und versuch es noch einmal.',
+  's4.gone': 'Die Verbindung zu Telegram besteht nicht mehr, weil der Bot gestoppt oder blockiert wurde. Die Einrichtung beginnt gleich von vorn.',
+  's4.helpTitle': 'Nichts angekommen?',
+  's4.help1': '<strong>Telegram ist stumm.</strong> Prüfe, ob Benachrichtigungen für Telegram und für den VatTrackr-Bot erlaubt sind.',
+  's4.help2': '<strong>Der Bot wurde gestoppt.</strong> Öffne den Bot in Telegram und schick ihm <code>/status</code>. Antwortet er nicht, beginne die Einrichtung neu.',
+  's4.help3': '<strong>Das Handy ist offline.</strong> Die Nachricht kommt an, sobald es wieder Netz hat.',
+  's4.help4': '<strong>Das Plugin meldet sich nicht.</strong> Starte vPilot neu. Hilft das nicht, sieh in die Datei <code>VatTrackrNotify.log</code> im Plugins-Ordner von vPilot.',
+
+  'done.title': 'Fertig. Guten Flug.',
+  'done.lede': 'Solange vPilot läuft, meldet sich dein Handy bei:',
+  'done.l1': 'Contact me und allen anderen privaten Nachrichten',
+  'done.l2': 'Funk-Text, in dem dein Callsign vorkommt',
+  'done.l3': 'SELCAL-Rufen',
+  'done.l4': 'einem Abbruch der Verbindung zu VATSIM',
+  'done.rule': 'Die Nachricht ersetzt nicht deine Anwesenheit. Es gelten die VATSIM-Regeln zu unbeaufsichtigten Verbindungen, und auf eine Kontaktaufforderung musst du zügig reagieren. Nachlesen kannst du das im <a href="https://vatsim.net/docs/policy/code-of-conduct" target="_blank" rel="noopener">VATSIM Code of Conduct</a>.',
+  'done.toneTitle': 'Damit du es nicht überhörst',
+  'done.tone': 'Gib dem Bot in Telegram einen eigenen, lauten Benachrichtigungston: Bot öffnen, oben auf seinen Namen tippen und die Benachrichtigungen anpassen. Prüfe auch, dass der Chat nicht stummgeschaltet ist.',
+  'done.manageTitle': 'Ändern und abmelden',
+  'done.m1': 'Was gemeldet wird, stellst du im Bot ein: Schick ihm <code>/settings</code>.',
+  'done.m2': 'Zum Abmelden schickst du dem Bot <code>/stop</code> und entfernst <code>VatTrackrNotify.dll</code> und <code>VatTrackrNotify.ini</code> aus dem Plugins-Ordner von vPilot.',
+  'done.updateTitle': 'Plugin aktualisieren',
+  'done.update': 'Gibt es eine neue Version, sagt dir der Bot Bescheid. Beende dann vPilot, lade das <a id="a-pkg" href="{pkg}" download>aktuelle Paket</a>, entpacke es und starte <code>Installieren.cmd</code>. Deine Verbindung bleibt dabei bestehen.',
+  'done.moreTitle': 'Der Bot kann noch mehr',
+  'done.more': '<code>/atc EDDM</code> zeigt, wer dort gerade online ist. <code>/watch EDDM</code> meldet sich, sobald dort jemand online geht. Beides geht auch ohne vPilot.',
+  'done.reset': 'Einrichtung auf dieser Seite zurücksetzen',
+
+  'err.offline': 'Der Dienst ist gerade nicht erreichbar. Prüfe deine Internetverbindung und lade die Seite neu.',
+  'err.setup': 'VatTrackr Notify ist auf diesem Server noch nicht fertig eingerichtet.',
+  'err.rate': 'Zu viele Versuche in kurzer Zeit. Warte ein paar Minuten und versuch es noch einmal.',
+  'err.stale': 'Deine gespeicherte Einrichtung gilt nicht mehr. Beginne noch einmal von vorn.',
+  'err.expired': 'Die Einrichtung wurde nicht innerhalb von 60 Minuten abgeschlossen. Lade das Paket neu und beginne noch einmal.',
+
+  'foot.privacy': 'Gespeichert werden deine Telegram-Chat-ID, ein Prüfwert deines Schlüssels, Sprache und Einstellungen, die Flughäfen, die du mit /watch beobachtest, die Version deines Plugins und der Zeitpunkt der letzten Meldung. Nachrichten werden durchgereicht und nicht gespeichert.',
+  'foot.indep': 'VatTrackr ist ein privates Projekt und steht in keiner Verbindung zu VATSIM oder zu vPilot.',
+  'foot.privacyLink': 'Datenschutz',
+  'foot.imprintLink': 'Impressum',
+  'foot.sourceLink': 'Quelltext',
+  'foot.version': 'Plugin-Version {v}'
+},
+en: {
+  'title': 'VatTrackr Notify – Setup',
+  'h1': 'Your phone pings you when a controller calls.',
+  'lede': 'VatTrackr Notify sends you a Telegram message as soon as someone messages you in vPilot on VATSIM. Free, and set up in about three minutes.',
+  'needs': 'You need a Windows PC with vPilot and a phone with Telegram.',
+  'demo.app': 'VatTrackr Notify',
+  'demo.caption': 'Examples: this is how the alerts arrive on your phone.',
+  'demo.t1': 'now', 'demo.t2': '4m ago', 'demo.t3': '19m ago', 'demo.t4': '42m ago', 'demo.t5': '1h ago',
+  'demo.m1': '📡 Contact me: EDDM_N_APP\nPlease call on 123.905.',
+  'demo.m2': '✉️ Private message from EDDM_TWR\nYour transponder is still on standby.',
+  'demo.m3': '🔔 SELCAL from EGGX_FSS',
+  'demo.m4': '🟢 EDDF_TWR is now online.\nStop watching: /unwatch EDDF',
+  'demo.m5': '🔌 Disconnected from VATSIM\nvPilot is no longer connected to the network.',
+  'next': 'Continue',
+  'reopen': 'Open',
+  'copy': 'Copy',
+  'copied': 'Copied',
+
+  's1.title': 'Download the plugin',
+  's1.sum': 'Package downloaded.',
+  's1.intro': 'The package contains the plugin for vPilot and a small installer that puts it in the right place.',
+  's1.windows': 'The plugin only runs on Windows. Open this page on the PC that runs vPilot.',
+  's1.download': 'Download package',
+  's1.building': 'Building package …',
+  's1.fallback': 'The package could not be built. Download the three files separately into one folder instead:',
+
+  's2.title': 'Install',
+  's2.sum': 'Plugin is running.',
+  's2.a': 'Unzip the package: right-click <code>VatTrackrNotify.zip</code>, then “Extract all”.',
+  's2.b': 'In the unzipped folder, double-click <code>Installieren.cmd</code>. If Windows asks, choose “Run”. If a blue notice appears, choose “More info” first, then “Run anyway”.',
+  's2.c': 'Start vPilot.',
+  's2.wait': 'Waiting for your plugin. This page notices by itself when vPilot has loaded it.',
+  's2.manualTitle': 'Rather install by hand?',
+  's2.m1': 'Close vPilot if it is running.',
+  's2.m2': 'Open the Plugins folder: press <kbd>Windows key</kbd> + <kbd>R</kbd>, paste this line and press Enter.',
+  's2.m3': 'From the unzipped package, put <code>VatTrackrNotify.dll</code> and <code>VatTrackrNotify.ini</code> into that folder.',
+  's2.m4': 'Unblock the file: right-click <code>VatTrackrNotify.dll</code>, then Properties. Tick “Unblock” at the bottom and confirm with OK. Windows blocks downloaded DLL files, and vPilot will not load the plugin otherwise.',
+  's2.m5': 'Start vPilot.',
+  's2.helpTitle': 'vPilot is running but nothing happens here?',
+  's2.help1': '<strong>Look at the log file.</strong> After vPilot has started, the Plugins folder contains the file <code>VatTrackrNotify.log</code>. It says what the plugin is doing. If the file is missing, vPilot did not load the plugin.',
+  's2.help2': '<strong>The file is still blocked.</strong> If the properties of <code>VatTrackrNotify.dll</code> show “Unblock” at the bottom, tick it, confirm with OK and restart vPilot.',
+  's2.help3': '<strong>A second window of this page has opened.</strong> Continue there. The plugin opens the page itself when it cannot find it.',
+
+  's3.title': 'Connect Telegram',
+  's3.sum': 'Telegram is connected.',
+  's3.qrAlt': 'QR code that opens the VatTrackr bot in Telegram',
+  's3.scan': 'Scan the code with your phone camera. Telegram opens the VatTrackr bot. Tap “Start” there.',
+  's3.open': 'Open Telegram on this device',
+  's3.find': 'The bot is called @{bot}.',
+  's3.wait': 'Waiting for you to tap “Start” in the bot …',
+  's3.codeIntro': 'The bot sent you a four-digit code. Enter it here:',
+  's3.confirm': 'Confirm',
+  's3.wrong': 'That code is not right. You have {n} tries left.',
+  's3.failed': 'Too many wrong codes. Scan the QR code again and the bot will send you a new code.',
+
+  's4.title': 'Test it',
+  's4.sum': 'Test message arrived.',
+  's4.linkWait': 'Your plugin is fetching the key …',
+  's4.linkOk': 'Your plugin is connected (version {v}).',
+  's4.intro': 'Send yourself a test message. It looks like a real contact request.',
+  's4.send': 'Send test message',
+  's4.again': 'Send again',
+  's4.sending': 'Sending …',
+  's4.sent': 'Sent. Check your phone.',
+  's4.ask': 'Did the message arrive?',
+  's4.yes': 'Yes, it arrived',
+  's4.no': 'No',
+  's4.rate': 'Too many messages in a short time. Wait a minute and try again.',
+  's4.gone': 'The Telegram connection no longer exists because the bot was stopped or blocked. The setup will start over in a moment.',
+  's4.helpTitle': 'Nothing arrived?',
+  's4.help1': '<strong>Telegram is muted.</strong> Check that notifications are allowed for Telegram and for the VatTrackr bot.',
+  's4.help2': '<strong>The bot was stopped.</strong> Open the bot in Telegram and send it <code>/status</code>. If it does not answer, start the setup again.',
+  's4.help3': '<strong>The phone is offline.</strong> The message arrives as soon as it is back online.',
+  's4.help4': '<strong>The plugin does not check in.</strong> Restart vPilot. If that does not help, look at the file <code>VatTrackrNotify.log</code> in vPilot’s Plugins folder.',
+
+  'done.title': 'Done. Have a good flight.',
+  'done.lede': 'While vPilot is running, your phone pings you for:',
+  'done.l1': 'Contact me and all other private messages',
+  'done.l2': 'radio text that mentions your callsign',
+  'done.l3': 'SELCAL calls',
+  'done.l4': 'a lost connection to VATSIM',
+  'done.rule': 'The message does not replace being there. VATSIM’s rules on unattended connections apply, and you must respond promptly to a contact request. You can read them in the <a href="https://vatsim.net/docs/policy/code-of-conduct" target="_blank" rel="noopener">VATSIM Code of Conduct</a>.',
+  'done.toneTitle': 'So you do not miss it',
+  'done.tone': 'Give the bot its own loud notification sound in Telegram: open the bot, tap its name at the top and adjust the notifications. Also check that the chat is not muted.',
+  'done.manageTitle': 'Change and sign off',
+  'done.m1': 'Choose what is reported in the bot: send it <code>/settings</code>.',
+  'done.m2': 'To sign off, send <code>/stop</code> to the bot and remove <code>VatTrackrNotify.dll</code> and <code>VatTrackrNotify.ini</code> from vPilot’s Plugins folder.',
+  'done.updateTitle': 'Updating the plugin',
+  'done.update': 'The bot tells you when there is a new version. Then close vPilot, download the <a id="a-pkg" href="{pkg}" download>current package</a>, unzip it and run <code>Installieren.cmd</code>. Your connection stays in place.',
+  'done.moreTitle': 'The bot can do more',
+  'done.more': '<code>/atc EDDM</code> shows who is online there right now. <code>/watch EDDM</code> tells you as soon as someone comes online there. Both work without vPilot.',
+  'done.reset': 'Reset the setup on this page',
+
+  'err.offline': 'The service cannot be reached right now. Check your internet connection and reload the page.',
+  'err.setup': 'VatTrackr Notify is not fully set up on this server yet.',
+  'err.rate': 'Too many attempts in a short time. Wait a few minutes and try again.',
+  'err.stale': 'Your saved setup is no longer valid. Please start again.',
+  'err.expired': 'The setup was not completed within 60 minutes. Download the package again and start over.',
+
+  'foot.privacy': 'We store your Telegram chat ID, a check value of your key, your language and settings, the airports you watch with /watch, your plugin version and the time of the last check-in. Messages are passed on and not stored.',
+  'foot.indep': 'VatTrackr is a private project and is not affiliated with VATSIM or vPilot.',
+  'foot.privacyLink': 'Privacy',
+  'foot.imprintLink': 'Legal notice',
+  'foot.sourceLink': 'Source code',
+  'foot.version': 'Plugin version {v}'
+}
+};
+
+/* ------------------------------------------------------------------ Zustand */
+var STORE = 'vtn-setup';
+var TOKEN_LIFE = 55 * 60 * 1000;      // der Server gibt einer Einrichtung 60 Minuten
+var state = { lang: 'de', langSet: false, token: '', tokenAt: 0, downloaded: false, key: '', tested: false };
+var live = { bot: '', latest: '', plugin: false, seen: false, version: '', open: 0, sub: 'qr', qrFor: '',
+             pairTimer: 0, statusTimer: 0, linkSince: 0 };
+
+function load() {
+  try {
+    var saved = JSON.parse(localStorage.getItem(STORE) || '{}');
+    for (var k in state) { if (Object.prototype.hasOwnProperty.call(saved, k)) state[k] = saved[k]; }
+  } catch (e) { /* ohne Speicher laeuft die Seite trotzdem */ }
+}
+function save() {
+  try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { }
+}
+
+/* ------------------------------------------------------------------ Hilfen */
+function $(sel) { return document.querySelector(sel); }
+function all(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+function show(sel, on) { var el = typeof sel === 'string' ? $(sel) : sel; if (el) el.hidden = !on; }
+function t(id, vars) {
+  var s = (TEXT[state.lang] && TEXT[state.lang][id]) || TEXT.en[id] || id;
+  if (vars) { for (var k in vars) { s = s.split('{' + k + '}').join(String(vars[k])); } }
+  return s;
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function say(text) { $('#live').textContent = text; }
+
+function api(action, params) {
+  var body = new URLSearchParams();
+  body.set('action', action);
+  for (var k in (params || {})) body.set(k, params[k]);
+  return fetch(CONFIG.api, { method: 'POST', body: body, cache: 'no-store' }).then(function (res) {
+    return res.json().then(function (data) { data.http = res.status; return data; },
+                           function () { return { ok: false, http: res.status, error: 'server' }; });
+  }, function () { return { ok: false, http: 0, error: 'offline' }; });
+}
+
+function alertBox(id) {
+  var box = $('#alert');
+  if (!id) { box.hidden = true; return; }
+  box.textContent = t(id);
+  box.dataset.id = id;
+  box.hidden = false;
+}
+
+/* ------------------------------------------------------------------ Sprache */
+function applyTexts() {
+  document.documentElement.lang = state.lang;
+  document.title = t('title');
+  all('[data-t]').forEach(function (el) { el.textContent = t(el.dataset.t); });
+  all('[data-h]').forEach(function (el) { el.innerHTML = t(el.dataset.h, { pkg: CONFIG.files + 'VatTrackrNotify.zip' }); });
+  all('[data-t-aria]').forEach(function (el) { el.setAttribute('aria-label', t(el.dataset.tAria)); });
+  all('.lang button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.lang === state.lang)); });
+  if ($('#alert').dataset.id && !$('#alert').hidden) $('#alert').textContent = t($('#alert').dataset.id);
+  $('#t-find').textContent = live.bot ? t('s3.find', { bot: live.bot }) : '';
+  $('#t-version').textContent = live.latest ? t('foot.version', { v: live.latest }) : '';
+  render();
+}
+
+/* ------------------------------------------------------------------ Darstellung der Schritte
+   1 Paket geladen · 2 Plugin gefunden · 3 Telegram verbunden · 4 getestet und Plugin gemeldet */
+function doneFlags() {
+  var d3 = !!state.key;
+  var d1 = d3 || state.downloaded;
+  var d2 = d3 || (d1 && live.plugin);
+  var d4 = d3 && state.tested && live.seen;
+  return [d1, d2, d3, d4];
+}
+function current() {
+  var d = doneFlags();
+  for (var i = 0; i < 4; i++) { if (!d[i]) return i + 1; }
+  return 5;
+}
+function pairLink() { return 'https://t.me/' + live.bot + '?start=' + state.token; }
+
+function render() {
+  var d = doneFlags();
+  var cur = current();
+  var open = live.open && live.open < cur ? live.open : cur;
+  for (var i = 1; i <= 4; i++) {
+    var li = $('#s' + i);
+    var isDone = d[i - 1];
+    li.dataset.state = isDone ? 'done' : (i === cur ? 'active' : 'todo');
+    show(li.querySelector('.work'), i === open);
+    show(li.querySelector('.sum'), isDone && i !== open);
+    var re = li.querySelector('[data-reopen]');
+    if (re) show(re, isDone && i !== open && !state.key);
+  }
+  show('#done', cur === 5);
+
+  // Schritt 1
+  show('#t-windows', !/Windows/i.test(navigator.userAgent));
+  show('#b-dl-next', d[0] && open === 1 && cur !== 1);
+
+  // Schritt 3
+  show('#p-qr', live.sub !== 'code');
+  show('#p-code', live.sub === 'code');
+  show('#t-fail', live.sub === 'fail');
+  if (open === 3 && state.token && live.bot && live.qrFor !== state.token) {
+    drawQr(pairLink());
+    $('#a-open').href = pairLink();
+    live.qrFor = state.token;
+  }
+
+  // Schritt 4
+  $('#t-linked').dataset.kind = live.seen ? 'ok' : '';
+  $('#t-linked-text').textContent = live.seen ? t('s4.linkOk', { v: live.version || '?' }) : t('s4.linkWait');
+
+  schedule();
+}
+
+function focusStep(n) {
+  var el = n === 5 ? $('#done h2') : $('#s' + n + ' h2');
+  if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+}
+function advance(message) {
+  live.open = 0;
+  render();
+  if (message) say(message);
+  focusStep(current());
+}
+
+/* ------------------------------------------------------------------ Schritt 1: Paket bauen (ZIP ohne Kompression) */
+var CRC = (function () {
+  var table = [];
+  for (var n = 0; n < 256; n++) {
+    var c = n;
+    for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+function crc32(bytes) {
+  var crc = 0xFFFFFFFF;
+  for (var i = 0; i < bytes.length; i++) crc = CRC[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+function zip(files) {
+  var enc = new TextEncoder();
+  var now = new Date();
+  var time = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+  var date = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+  var local = [], central = [], offset = 0, centralSize = 0;
+  files.forEach(function (f) {
+    var name = enc.encode(f.name), crc = crc32(f.data), size = f.data.length;
+    var h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true);
+    h.setUint16(10, time, true); h.setUint16(12, date, true);
+    h.setUint32(14, crc, true); h.setUint32(18, size, true); h.setUint32(22, size, true);
+    h.setUint16(26, name.length, true);
+    local.push(new Uint8Array(h.buffer), name, f.data);
+    var c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true);
+    c.setUint16(12, time, true); c.setUint16(14, date, true);
+    c.setUint32(16, crc, true); c.setUint32(20, size, true); c.setUint32(24, size, true);
+    c.setUint16(28, name.length, true); c.setUint32(42, offset, true);
+    central.push(new Uint8Array(c.buffer), name);
+    offset += 30 + name.length + size;
+    centralSize += 46 + name.length;
+  });
+  var end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+  end.setUint32(12, centralSize, true); end.setUint32(16, offset, true);
+  return new Blob(local.concat(central, [new Uint8Array(end.buffer)]), { type: 'application/zip' });
+}
+
+/* Die Einstellungsdatei bekommt das Token dieser Einrichtung und die Adresse des Dienstes,
+   passend zum Ort dieser Seite. Den Schluessel holt sich das Plugin spaeter selbst. */
+function iniFor(token) {
+  var server = new URL(CONFIG.api, location.href).href;
+  return FILE_INI.replace(/^Pair=.*$/m, 'Pair=' + token).replace(/^Server=.*$/m, 'Server=' + server);
+}
+function saveBlob(blob, name) {
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 60000);
+}
+
+function ensureToken() {
+  if (state.token && Date.now() - state.tokenAt < TOKEN_LIFE) return Promise.resolve(true);
+  return api('pair_start').then(function (r) {
+    if (!r.ok) {
+      alertBox(r.http === 429 ? 'err.rate' : (r.error === 'offline' ? 'err.offline' : 'err.setup'));
+      return false;
+    }
+    state.token = r.token;
+    state.tokenAt = Date.now();
+    live.plugin = false;
+    live.sub = 'qr';
+    save();
+    return true;
+  });
+}
+
+function download() {
+  var btn = $('#b-download');
+  var restore = function () { btn.disabled = false; btn.textContent = t('s1.download'); };
+  btn.disabled = true;
+  btn.textContent = t('s1.building');
+  show('#p-dl-fallback', false);
+  alertBox('');
+  ensureToken().then(function (ok) {
+    if (!ok) { restore(); return; }
+    var enc = new TextEncoder();
+    var ini = enc.encode(iniFor(state.token));
+    fetch(CONFIG.files + 'VatTrackrNotify.dll', { cache: 'no-store' })
+      .then(function (res) { if (!res.ok) throw new Error('dll'); return res.arrayBuffer(); })
+      .then(function (buf) {
+        var dll = new Uint8Array(buf);
+        if (dll.length < 1024 || dll[0] !== 0x4D || dll[1] !== 0x5A) throw new Error('dll');
+        saveBlob(zip([
+          { name: 'Installieren.cmd', data: enc.encode(FILE_CMD) },
+          { name: 'VatTrackrNotify.dll', data: dll },
+          { name: 'VatTrackrNotify.ini', data: ini },
+          { name: 'README.txt', data: enc.encode(FILE_README) }
+        ]), 'VatTrackrNotify.zip');
+        state.downloaded = true;
+        save();
+        restore();
+        advance(t('s1.sum'));
+      })
+      .catch(function () {
+        // Ersatzweg: die drei Dateien einzeln anbieten
+        $('#a-dll').href = CONFIG.files + 'VatTrackrNotify.dll';
+        $('#a-ini').href = URL.createObjectURL(new Blob([ini], { type: 'text/plain' }));
+        $('#a-cmd').href = URL.createObjectURL(new Blob([enc.encode(FILE_CMD)], { type: 'text/plain' }));
+        show('#p-dl-fallback', true);
+        restore();
+        say(t('s1.fallback'));
+      });
+  });
+}
+function fallbackDone() {
+  state.downloaded = true;
+  save();
+  show('#p-dl-fallback', false);
+  advance(t('s1.sum'));
+}
+
+/* ------------------------------------------------------------------ Schritte 2 und 3: Plugin gefunden? Telegram verbunden? */
+function drawQr(text) {
+  var qr = qrcode(0, 'M');
+  qr.addData(text);
+  qr.make();
+  var n = qr.getModuleCount();
+  var path = '';
+  for (var r = 0; r < n; r++) {
+    for (var c = 0; c < n; c++) { if (qr.isDark(r, c)) path += 'M' + c + ' ' + r + 'h1v1h-1z'; }
+  }
+  $('#qr').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + n + ' ' + n + '" shape-rendering="crispEdges"><path fill="#0A2D20" d="' + path + '"/></svg>';
+}
+
+function pollPair() {
+  if (state.key || !state.token) return;
+  api('pair_status', { token: state.token }).then(function (r) {
+    if (state.key || !state.token || !r.ok) return;
+    if (r.status === 'expired') { expire(); return; }
+    if (r.status === 'done' && r.key) { paired(r.key); return; }
+    var found = !!r.plugin && !live.plugin;
+    if (found) live.plugin = true;
+    var sub = r.status === 'code' ? 'code' : (r.status === 'failed' ? 'fail' : 'qr');
+    var changed = sub !== live.sub;
+    live.sub = sub;
+    if (found) { advance(t('s2.sum')); }
+    else if (changed) { render(); }
+    if (changed && sub === 'code') {
+      $('#code').value = '';
+      show('#t-code-err', false);
+      $('#code').focus();
+      say(t('s3.codeIntro'));
+    } else if (changed && sub === 'fail') {
+      say(t('s3.failed'));
+    }
+  });
+}
+function expire() {
+  state.token = '';
+  state.downloaded = false;
+  live.plugin = false;
+  live.sub = 'qr';
+  live.qrFor = '';
+  save();
+  alertBox('err.expired');
+  advance(t('err.expired'));
+}
+function paired(key) {
+  state.key = key;
+  state.token = '';
+  state.tested = false;
+  live.seen = false;
+  live.version = '';
+  live.linkSince = Date.now();
+  save();
+  resetTestUi();
+  advance(t('s3.sum'));
+}
+
+function confirmCode(ev) {
+  ev.preventDefault();
+  var code = $('#code').value.replace(/\D/g, '');
+  if (code.length !== 4) return;
+  show('#t-code-err', false);
+  api('pair_confirm', { token: state.token, code: code }).then(function (r) {
+    if (r.ok && r.key) { paired(r.key); return; }
+    if (r.error === 'wrong_code') {
+      $('#t-code-err').textContent = t('s3.wrong', { n: r.left });
+      show('#t-code-err', true);
+      $('#code').value = '';
+      $('#code').focus();
+      return;
+    }
+    if (r.error === 'offline') { alertBox('err.offline'); return; }
+    if (r.status === 'failed') { live.sub = 'fail'; render(); say(t('s3.failed')); return; }
+    if (r.status === 'expired') { expire(); }
+  });
+}
+
+function resetAll() {
+  state = { lang: state.lang, langSet: state.langSet, token: '', tokenAt: 0, downloaded: false, key: '', tested: false };
+  live.plugin = false; live.seen = false; live.version = ''; live.open = 0; live.sub = 'qr'; live.qrFor = '';
+  save();
+  resetTestUi();
+  show('#p-dl-fallback', false);
+  render();
+  focusStep(1);
+}
+
+/* ------------------------------------------------------------------ Schritt 4: Plugin gemeldet? Testnachricht */
+function pollStatus() {
+  if (!state.key) return;
+  api('status', { key: state.key }).then(function (r) {
+    if (!state.key) return;
+    if (r.http === 401) { staleKey(); return; }
+    if (!r.ok) return;
+    var was = live.seen;
+    live.seen = !!r.seen;
+    live.version = r.version || '';
+    if (live.seen && !was) {
+      if (current() === 5) advance(t('done.title')); else { render(); say(t('s4.linkOk', { v: live.version || '?' })); }
+    } else if (!live.seen && live.linkSince && Date.now() - live.linkSince > 30000) {
+      $('#d-help4').open = true;      // dauert laenger als erwartet: Hilfe von selbst aufklappen
+      live.linkSince = 0;
+    }
+  });
+}
+function staleKey() {
+  resetAll();
+  alertBox('err.stale');
+}
+
+function resetTestUi() {
+  show('#t-test', false);
+  show('#p-ask', false);
+  $('#b-test').textContent = t('s4.send');
+  $('#b-test').dataset.t = 's4.send';
+}
+function sendTest() {
+  var btn = $('#b-test'), line = $('#t-test'), text = $('#t-test-text');
+  btn.disabled = true;
+  line.dataset.kind = '';
+  text.textContent = t('s4.sending');
+  show(line, true);
+  api('test', { key: state.key }).then(function (r) {
+    btn.disabled = false;
+    if (r.ok) {
+      line.dataset.kind = 'ok';
+      text.textContent = t('s4.sent');
+      btn.dataset.t = 's4.again';
+      btn.textContent = t('s4.again');
+      show('#p-ask', true);
+      say(t('s4.sent'));
+      return;
+    }
+    line.dataset.kind = 'err';
+    if (r.http === 401 || r.http === 410) {
+      text.textContent = t('s4.gone');
+      setTimeout(staleKey, 4000);
+    } else {
+      text.textContent = t(r.http === 429 ? 's4.rate' : 'err.offline');
+    }
+    say(text.textContent);
+  });
+}
+function testArrived() {
+  state.tested = true;
+  save();
+  show('#p-ask', false);
+  if (live.seen) { advance(t('done.title')); }
+  else { render(); say(t('s4.linkWait')); }
+}
+
+/* ------------------------------------------------------------------ Abfragen takten */
+function schedule() {
+  // Laeuft auch im Hintergrund weiter: das Plugin oeffnet die Seite neu, wenn sie laenger nicht fragt.
+  var needPair = !state.key && !!state.token && state.downloaded;
+  if (needPair && !live.pairTimer) live.pairTimer = setInterval(pollPair, 2000);
+  if (!needPair && live.pairTimer) { clearInterval(live.pairTimer); live.pairTimer = 0; }
+
+  var needStatus = !!state.key && !live.seen;
+  if (needStatus && !live.statusTimer) live.statusTimer = setInterval(pollStatus, 3000);
+  if (!needStatus && live.statusTimer) { clearInterval(live.statusTimer); live.statusTimer = 0; }
+}
+
+/* ------------------------------------------------------------------ Start */
+function copyFrom(btn) {
+  var text = $(btn.dataset.copy).textContent;
+  var done = function () {
+    btn.textContent = t('copied');
+    setTimeout(function () { btn.textContent = t('copy'); }, 1600);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, function () { legacyCopy(text); done(); });
+  } else { legacyCopy(text); done(); }
+}
+function legacyCopy(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); } catch (e) { }
+  ta.remove();
+}
+
+function init() {
+  load();
+  if (!TEXT[state.lang] || !state.langSet) {
+    state.lang = (navigator.language || 'en').toLowerCase().indexOf('de') === 0 ? 'de' : 'en';
+  }
+
+  // Vom Plugin geoeffnet: die Einrichtung laeuft schon, es fehlt nur noch Telegram.
+  var fromPlugin = /[?&]pair=([a-f0-9]{32})(?:&|$)/.exec(location.search);
+  if (fromPlugin) {
+    state.token = fromPlugin[1];
+    state.tokenAt = Date.now();
+    state.downloaded = true;
+    state.key = '';
+    state.tested = false;
+    live.plugin = true;
+    save();
+    try { history.replaceState(null, '', location.pathname); } catch (e) { }
+  }
+
+  if (CONFIG.privacy) { $('#a-privacy').href = CONFIG.privacy; show('#a-privacy', true); }
+  if (CONFIG.imprint) { $('#a-imprint').href = CONFIG.imprint; show('#a-imprint', true); }
+  if (CONFIG.source) { $('#a-source').href = CONFIG.source; show('#a-source', true); }
+  applyTexts();
+
+  all('.lang button').forEach(function (b) {
+    b.addEventListener('click', function () { state.lang = b.dataset.lang; state.langSet = true; save(); applyTexts(); });
+  });
+  $('#b-download').addEventListener('click', download);
+  $('#b-fb-next').addEventListener('click', fallbackDone);
+  $('#p-code').addEventListener('submit', confirmCode);
+  $('#code').addEventListener('input', function () {
+    if (this.value.replace(/\D/g, '').length === 4) {
+      if ($('#p-code').requestSubmit) $('#p-code').requestSubmit(); else confirmCode(new Event('submit'));
+    }
+  });
+  $('#b-test').addEventListener('click', sendTest);
+  $('#b-yes').addEventListener('click', testArrived);
+  $('#b-no').addEventListener('click', function () { $('#d-help4').open = true; $('#d-help4 summary').focus(); });
+  $('#b-reset').addEventListener('click', resetAll);
+  all('[data-reopen]').forEach(function (b) {
+    b.addEventListener('click', function () { live.open = Number(b.dataset.reopen); render(); focusStep(live.open); });
+  });
+  all('[data-next]').forEach(function (b) { b.addEventListener('click', function () { advance(''); }); });
+  all('[data-copy]').forEach(function (b) { b.addEventListener('click', function () { copyFrom(b); }); });
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) { pollPair(); if (state.key && !live.seen) pollStatus(); }
+  });
+
+  // Dienst pruefen, gespeicherten Stand wieder aufnehmen
+  api('info').then(function (r) {
+    if (!r.ok) {
+      alertBox(r.error === 'offline' ? 'err.offline' : 'err.setup');
+      $('#b-download').disabled = true;
+      return;
+    }
+    live.bot = r.bot;
+    live.latest = r.latest;
+    applyTexts();
+    if (state.key) {
+      live.linkSince = Date.now();
+      pollStatus();
+    } else if (state.token) {
+      pollPair();
+    }
+  });
+}
+
+init();
+})();
+</script>
+</body>
+</html>

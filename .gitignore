@@ -1,0 +1,12 @@
+# Bauergebnisse und Werkzeuge
+build/
+out/
+refs/
+vendor/node_modules/
+__pycache__/
+*.pyc
+
+# Betriebsdaten: gehoeren nie ins Repository
+server/vatnotify/config.php
+server/vatnotify/data/*
+!server/vatnotify/data/.htaccess
